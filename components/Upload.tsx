@@ -7,10 +7,18 @@ interface UploadProps {
     onComplete?: (base64Data: string) => void;
 }
 
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const isValidFile = (file: File): boolean => {
+    return ALLOWED_TYPES.includes(file.type);
+};
+
 const Upload = ({ onComplete }: UploadProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -77,21 +85,28 @@ const Upload = ({ onComplete }: UploadProps) => {
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-
         if (!isSignedIn) return;
-
         const droppedFile = e.dataTransfer.files[0];
-        const allowedTypes = ['image/jpeg', 'image/png'];
-        if (droppedFile && allowedTypes.includes(droppedFile.type)) {
+        if (droppedFile && isValidFile(droppedFile)) {
+            if (droppedFile.size > MAX_FILE_SIZE) {
+                setError('File exceeds 10 MB limit. Please upload a smaller file.');
+                return;
+            }
+            setError(null);
             processFile(droppedFile);
         }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!isSignedIn) return;
-
         const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
+        if (selectedFile && isValidFile(selectedFile)) {
+            if (selectedFile.size > MAX_FILE_SIZE) {
+                setError('File exceeds 10 MB limit. Please upload a smaller file.');
+                e.target.value = ''; // clear the input so the same file can be re-selected after correction
+                return;
+            }
+            setError(null);
             processFile(selectedFile);
         }
     };
@@ -108,21 +123,21 @@ const Upload = ({ onComplete }: UploadProps) => {
                     <input
                         type="file"
                         className="drop-input"
-                        accept=".jpg,.jpeg,.png,.webp"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                         disabled={!isSignedIn}
                         onChange={handleChange}
                     />
-
                     <div className="drop-content">
                         <div className="drop-icon">
                             <UploadIcon size={20} />
                         </div>
                         <p>
-                            {isSignedIn ? (
-                                "Click to upload or just drag and drop"
-                            ): ("Sign in or sign up with Puter to upload")}
+                            {isSignedIn
+                                ? "Click to upload or just drag and drop"
+                                : "Sign in or sign up with Puter to upload"}
                         </p>
                         <p className="help">Maximum file size 10 MB.</p>
+                        {error && <p className="upload-error">{error}</p>}
                     </div>
                 </div>
             ) : (
@@ -131,16 +146,13 @@ const Upload = ({ onComplete }: UploadProps) => {
                         <div className="status-icon">
                             {progress === 100 ? (
                                 <CheckCircle2 className="check" />
-                            ): (
+                            ) : (
                                 <ImageIcon className="image" />
                             )}
                         </div>
-
                         <h3>{file.name}</h3>
-
                         <div className='progress'>
                             <div className="bar" style={{ width: `${progress}%` }} />
-
                             <p className="status-text">
                                 {progress < 100 ? 'Analyzing Floor Plan...' : 'Redirecting...'}
                             </p>
@@ -149,6 +161,7 @@ const Upload = ({ onComplete }: UploadProps) => {
                 </div>
             )}
         </div>
-    )
-}
-export default Upload
+    );
+};
+
+export default Upload;
