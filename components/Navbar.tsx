@@ -28,7 +28,7 @@ const Navbar = () => {
             <div className='left'>
                 <div className='brand'>
                     <Box className='logo'/>
-                    <span className='name'>RoomDalla</span>
+                    <span className='name'>Structify</span>
                 </div>
                 <ul className='links'>
                     <a href='#'>Product</a>
