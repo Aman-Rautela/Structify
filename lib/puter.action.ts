@@ -69,7 +69,7 @@ export const createProject = async ({
   const payload = {
     ...rest,
     sourceImage : resolvedSource,
-    renderImage : resolverRender,
+    renderedImage : resolverRender,
   }
 
 

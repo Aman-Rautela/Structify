@@ -30,7 +30,9 @@ export const getOrCreateHostingConfig =
     try {
       const created = await puter.hosting.create(subdomain, ".");
 
-      return { subdomain: created.subdomain };
+      const record = { subdomain: created.subdomain };
+      await puter.kv.set(HOSTING_CONFIG_KEY, record);
+      return record;
     } catch (error) {
       console.warn(`Could not find subdomain : ${error}`);
       return null;
@@ -65,7 +67,13 @@ export const uploadImageToHosting = async ({
 
     const ext = getImageExtension(contentType, url);
 
-    const dir = `projects/${projectId}`;
+    const safeId = /^[\w-]+$/.test(projectId) ? projectId : null;
+    if (!safeId) {
+      console.warn(`Invalid projectId: ${projectId}`);
+      return null;
+    }
+
+    const dir = `projects/${safeId}`;
     const filePath = `${dir}/${label}.${ext}`;
 
     const uploadFile = new File([resolved.blob], `${label}.${ext}`, {

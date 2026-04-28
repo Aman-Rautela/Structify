@@ -26,7 +26,7 @@ export default function Home() {
       id: newId,
       name,
       sourceImage: base64Image,
-      renderImage: undefined,
+      renderedImage: undefined,
       timestamp: Date.now(),
     };
 
@@ -37,7 +37,7 @@ export default function Home() {
       return false;
     }
 
-    setProject((prev) => [newItem, ...prev]);
+    setProject((prev) => [saved, ...prev]);
 
     navigate(`visualiser/${newId}`, {
       state: {
@@ -109,7 +109,7 @@ export default function Home() {
 
           <div className="projects-grid">
             {project.map(({id, name, renderedImage, sourceImage, timestamp}) => (
-              <div className="project-card group">
+              <div key={id} className="project-card group">
                 <div className="preview">
                   <img
                     src={renderedImage || sourceImage}
