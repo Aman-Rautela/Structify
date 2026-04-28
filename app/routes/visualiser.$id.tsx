@@ -1,9 +1,23 @@
-import React from 'react'
+import React from "react";
+import { useLocation } from "react-router";
 
 const VisualiserId = () => {
-  return (
-    <div>visualiserId</div>
-  )
-}
+  const location = useLocation();
+  const { initialImage, name } = location.state || {};
 
-export default VisualiserId
+  return (
+    <section>
+      <h1>{name || "Untitled Project"}</h1>
+      <div className="visualizer">
+        {initialImage && (
+          <div className="imageContainer">
+            <h2>Source Image</h2>
+            <img src={initialImage} alt="source" />
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+export default VisualiserId;
