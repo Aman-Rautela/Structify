@@ -1,0 +1,93 @@
+import puter from "@heyputer/puter.js";
+import {
+  HOSTING_CONFIG_KEY,
+  createHostingSlug,
+  fetchBlobFromUrl,
+  getHostedUrl,
+  getImageExtension,
+  imageUrlToPngBlob,
+  isHostedUrl,
+} from "./utils";
+
+type HostingConfig = {
+  subdomain: string;
+};
+
+type HostedAsset = {
+  url: string;
+};
+
+export const getOrCreateHostingConfig =
+  async (): Promise<HostingConfig | null> => {
+    const exsisting = (await puter.kv.get(
+      HOSTING_CONFIG_KEY,
+    )) as HostingConfig | null;
+
+    if (exsisting?.subdomain) return { subdomain: exsisting.subdomain };
+
+    const subdomain = createHostingSlug();
+
+    try {
+      const created = await puter.hosting.create(subdomain, ".");
+
+      const record = { subdomain: created.subdomain };
+      await puter.kv.set(HOSTING_CONFIG_KEY, record);
+      return record;
+    } catch (error) {
+      console.warn(`Could not find subdomain : ${error}`);
+      return null;
+    }
+  };
+
+export const uploadImageToHosting = async ({
+  hosting,
+  url,
+  projectId,
+  label,
+}: StoreHostedImageParams): Promise<HostedAsset | null> => {
+  if (isHostedUrl(url)) return { url };
+  if (!hosting || !url) return null;
+
+  try {
+    const resolved =
+      label === "rendered"
+        ? await imageUrlToPngBlob(url).then((blob) =>
+            blob
+              ? {
+                  blob,
+                  contentType: "image/png",
+                }
+              : null,
+          )
+        : await fetchBlobFromUrl(url);
+
+    if (!resolved) return null;
+
+    const contentType = resolved.contentType || resolved.blob.type || "";
+
+    const ext = getImageExtension(contentType, url);
+
+    const safeId = /^[\w-]+$/.test(projectId) ? projectId : null;
+    if (!safeId) {
+      console.warn(`Invalid projectId: ${projectId}`);
+      return null;
+    }
+
+    const dir = `projects/${safeId}`;
+    const filePath = `${dir}/${label}.${ext}`;
+
+    const uploadFile = new File([resolved.blob], `${label}.${ext}`, {
+      type: contentType,
+    });
+
+    await puter.fs.mkdir(dir, { createMissingParents: true });
+    await puter.fs.write(filePath, uploadFile);
+
+    const hostedUrl = getHostedUrl({ subdomain: hosting.subdomain }, filePath);
+
+    return hostedUrl ? { url: hostedUrl } : null;
+  } catch (error) {
+    console.warn(`Could not find hosting url - ${error}`);
+    return null;
+  }
+};
