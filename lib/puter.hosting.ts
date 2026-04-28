@@ -45,8 +45,8 @@ export const uploadImageToHosting = async ({
   projectId,
   label,
 }: StoreHostedImageParams): Promise<HostedAsset | null> => {
-  if (!hosting || !url) return null;
   if (isHostedUrl(url)) return { url };
+  if (!hosting || !url) return null;
 
   try {
     const resolved =
