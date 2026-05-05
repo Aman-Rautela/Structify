@@ -1,4 +1,3 @@
-// ✅ remove top-level import, use lazy loader everywhere
 import { getOrCreateHostingConfig, uploadImageToHosting } from "./puter.hosting";
 import { isHostedUrl } from "./utils";
 
@@ -30,16 +29,25 @@ export const createProject = async ({
     item,
 }: CreateProjectParams): Promise<DesignItem | null | undefined> => {
     const projectId = item.id;
-    const hosting = await getOrCreateHostingConfig();
 
-    const hostedSource = projectId
-        ? await uploadImageToHosting({ hosting, url: item.sourceImage, projectId, label: "source" })
-        : null;
+    let hosting: Awaited<ReturnType<typeof getOrCreateHostingConfig>>;
+    let hostedSource: Awaited<ReturnType<typeof uploadImageToHosting>> | null = null;
+    let hostedRender: Awaited<ReturnType<typeof uploadImageToHosting>> | null = null;
 
-    const hostedRender =
-        projectId && item.renderedImage
+    try {
+        hosting = await getOrCreateHostingConfig();
+
+        hostedSource = projectId
+            ? await uploadImageToHosting({ hosting, url: item.sourceImage, projectId, label: "source" })
+            : null;
+
+        hostedRender = projectId && item.renderedImage
             ? await uploadImageToHosting({ hosting, url: item.renderedImage, projectId, label: "rendered" })
             : null;
+    } catch (error) {
+        console.warn(`Failed to configure hosting or upload images: ${error}`);
+        return null;
+    }
 
     const resolvedSource =
         hostedSource?.url || (isHostedUrl(item.sourceImage) ? item.sourceImage : "");

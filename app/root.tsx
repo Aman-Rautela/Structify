@@ -83,8 +83,8 @@ export default function App() {
     return refreshAuth();
   };
 
-  const signOut = () => {
-    puterSignOut();
+  const signOut = async() => {
+    await puterSignOut();
     return refreshAuth();
   };
   const context = mounted
