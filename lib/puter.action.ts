@@ -1,83 +1,74 @@
-import puter from "@heyputer/puter.js";
-import {
-  getOrCreateHostingConfig,
-  uploadImageToHosting,
-} from "./puter.hosting";
-import { NfcIcon } from "lucide-react";
+import { getOrCreateHostingConfig, uploadImageToHosting } from "./puter.hosting";
 import { isHostedUrl } from "./utils";
 
-export const signIn = async () => await puter.auth.signIn();
-export const signOut = () => puter.auth.signOut();
+const getPuter = async () => {
+    const { default: puter } = await import("@heyputer/puter.js");
+    return puter;
+};
+
+export const signIn = async () => {
+    const puter = await getPuter();
+    return puter.auth.signIn();
+};
+
+export const signOut = async () => {
+    const puter = await getPuter();
+    return puter.auth.signOut();
+};
 
 export const getCurrentUser = async () => {
-  try {
-    return await puter.auth.getUser();
-  } catch (error) {
-    return null;
-  }
+    try {
+        const puter = await getPuter();
+        return await puter.auth.getUser();
+    } catch {
+        return null;
+    }
 };
 
 export const createProject = async ({
-  item,
+    item,
 }: CreateProjectParams): Promise<DesignItem | null | undefined> => {
-  const projectId = item.id;
+    const projectId = item.id;
 
-  const hosting = await getOrCreateHostingConfig();
+    let hosting: Awaited<ReturnType<typeof getOrCreateHostingConfig>>;
+    let hostedSource: Awaited<ReturnType<typeof uploadImageToHosting>> | null = null;
+    let hostedRender: Awaited<ReturnType<typeof uploadImageToHosting>> | null = null;
 
-  const hostedSource = projectId
-    ? await uploadImageToHosting({
-        hosting,
-        url: item.sourceImage,
-        projectId,
-        label: "source",
-      })
-    : null;
+    try {
+        hosting = await getOrCreateHostingConfig();
 
-  const hostedRender =
-    projectId && item.renderedImage
-      ? await uploadImageToHosting({
-          hosting,
-          url: item.renderedImage,
-          projectId,
-          label: "rendered",
-        })
-      : null;
+        hostedSource = projectId
+            ? await uploadImageToHosting({ hosting, url: item.sourceImage, projectId, label: "source" })
+            : null;
 
-  const resolvedSource =
-    hostedSource?.url ||
-    (isHostedUrl(item.sourceImage) ? item.sourceImage : "");
+        hostedRender = projectId && item.renderedImage
+            ? await uploadImageToHosting({ hosting, url: item.renderedImage, projectId, label: "rendered" })
+            : null;
+    } catch (error) {
+        console.warn(`Failed to configure hosting or upload images: ${error}`);
+        return null;
+    }
 
-  if (!resolvedSource) {
-    console.warn(`Faild to host source image, skipping save.`);
-    return null;
-  }
+    const resolvedSource =
+        hostedSource?.url || (isHostedUrl(item.sourceImage) ? item.sourceImage : "");
 
-  const resolverRender = hostedRender?.url
-    ? hostedRender?.url
-    : item.renderedImage && isHostedUrl(item.renderedImage)
-      ? item.renderedImage
-      : undefined;
+    if (!resolvedSource) {
+        console.warn("Failed to host source image, skipping save.");
+        return null;
+    }
 
-  const {
-    sourcePath: _sourcePath,
-    renderedPath: _renderedPath,
-    publicPath: _publicPath,
-    ...rest
-  } = item;
+    const resolverRender = hostedRender?.url
+        ? hostedRender.url
+        : item.renderedImage && isHostedUrl(item.renderedImage)
+          ? item.renderedImage
+          : undefined;
 
+    const { sourcePath: _s, renderedPath: _r, publicPath: _p, ...rest } = item;
 
-  const payload = {
-    ...rest,
-    sourceImage : resolvedSource,
-    renderedImage : resolverRender,
-  }
-
-
-  try {
-    return payload;
-  } catch (error) {
-    console.log(`Failed to save project ${error}`)
-    return null
-  }
-
+    try {
+        return { ...rest, sourceImage: resolvedSource, renderedImage: resolverRender };
+    } catch (error) {
+        console.log(`Failed to save project ${error}`);
+        return null;
+    }
 };

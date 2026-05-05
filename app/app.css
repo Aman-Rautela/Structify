@@ -332,7 +332,7 @@
             }
 
             .render-area {
-                @apply relative bg-zinc-100 min-h-105;
+                @apply relative bg-zinc-100 min-h-105 h-full;
 
                 .render-img {
                     @apply w-full h-full object-contain transition-all duration-700 opacity-100 scale-100;
@@ -345,7 +345,7 @@
                 }
 
                 .render-placeholder {
-                    @apply w-full h-full flex items-center justify-center;
+                    @apply w-full h-full min-h-105 flex items-center justify-center;
                 }
 
                 .render-fallback {
