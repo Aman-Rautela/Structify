@@ -10,7 +10,11 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { useEffect, useState } from "react";
-import { getCurrentUser, signIn as puterSignIn, signOut as puterSignOut } from "../lib/puter.action";
+import {
+  getCurrentUser,
+  signIn as puterSignIn,
+  signOut as puterSignOut,
+} from "../lib/puter.action";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -27,14 +31,14 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -43,50 +47,55 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-  const DEFAULT_AUTH_STATE: AuthState = {
-    isSignedIn : false,
-    userName: null,
-    userId: null,
-  }
+const DEFAULT_AUTH_STATE: AuthState = {
+  isSignedIn: false,
+  userName: null,
+  userId: null,
+};
 
 export default function App() {
-  const[authState, setAuthState] = useState<AuthState>(DEFAULT_AUTH_STATE);
+  const [authState, setAuthState] = useState<AuthState>(DEFAULT_AUTH_STATE);
 
-  const refreshAuth = async() => {
+  const [mounted, setMounted] = useState(false);
+
+  const refreshAuth = async () => {
     try {
       const user = await getCurrentUser();
-
       setAuthState({
         isSignedIn: !!user,
         userName: user?.username || null,
-        userId: user?.uuid || null
+        userId: user?.uuid || null,
       });
-
       return !!user;
-
-    } catch (error) {
+    } catch {
       setAuthState(DEFAULT_AUTH_STATE);
       return false;
     }
-  }
+  };
 
   useEffect(() => {
-    refreshAuth()
-  },[])
+    setMounted(true);
+    refreshAuth();
+  }, []);
 
-  const signIn = async() => {
+  const signIn = async () => {
     await puterSignIn();
     return refreshAuth();
-  }
+  };
 
   const signOut = () => {
     puterSignOut();
     return refreshAuth();
-  }
+  };
+  const context = mounted
+    ? { ...authState, refreshAuth, signIn, signOut }
+    : { ...DEFAULT_AUTH_STATE, refreshAuth, signIn, signOut };
 
-  return <main className="min-h-screen bg-background text-foreground relative z-10">
-      <Outlet  context={{...authState, refreshAuth, signIn, signOut}}/>
+  return (
+    <main className="min-h-screen bg-background text-foreground relative z-10">
+      <Outlet context={context} />
     </main>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
